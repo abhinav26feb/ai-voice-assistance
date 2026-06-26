@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import os
@@ -56,9 +57,11 @@ def process_message_route():
         ]
     )
 
-    ollama_response_speech = text_to_speech(
-        ollama_response_text,
-        voice,
+    ollama_response_speech = asyncio.run(
+        text_to_speech(
+            ollama_response_text,
+            voice,
+        )
     )
 
     ollama_response_speech = base64.b64encode(

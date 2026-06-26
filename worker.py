@@ -1,34 +1,42 @@
+import asyncio
+import subprocess
+import os
+import tempfile
+
+import edge_tts
 import requests
+import whisper
+
+whisper_model = whisper.load_model("base")
 
 
 def speech_to_text(audio_binary):
-    base_url = "https://sn-watson-stt.labs.skills.network"
-    api_url = base_url + "/speech-to-text/api/v1/recognize"
 
-    params = {
-        "model": "en-US_Multimedia"
-    }
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
+        temp_audio.write(audio_binary)
+        webm_path = temp_audio.name
 
-    response = requests.post(
-        api_url,
-        params=params,
-        data=audio_binary
-    ).json()
+    wav_path = webm_path.replace(".webm", ".wav")
 
-    print("speech to text response:", response)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            webm_path,
+            wav_path,
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
-    text = "null"
+    result = whisper_model.transcribe(wav_path)
 
-    while bool(response.get("results")):
-        text = (
-            response.get("results")
-            .pop()
-            .get("alternatives")
-            .pop()
-            .get("transcript")
-        )
+    os.remove(webm_path)
+    os.remove(wav_path)
 
-    return text
+    return result["text"].strip()
 
 
 def ollama_process_message(user_message):
@@ -52,36 +60,41 @@ def ollama_process_message(user_message):
         timeout=120,
     )
 
-    result = response.json()
+    response.raise_for_status()
 
-    return result["response"]
+    return response.json()["response"]
 
 
-def text_to_speech(text, voice=""):
-    return b""
-    # base_url = "https://sn-watson-tts.labs.skills.network"
-    #
-    # api_url = (
-    #     base_url +
-    #     "/text-to-speech/api/v1/synthesize?output=output_text.wav"
-    # )
-    #
-    # if voice != "" and voice != "default":
-    #     api_url += "&voice=" + voice
-    #
-    # headers = {
-    #     "Accept": "audio/wav",
-    #     "Content-Type": "application/json"
-    # }
-    #
-    # json_data = {
-    #     "text": text
-    # }
-    #
-    # response = requests.post(
-    #     api_url,
-    #     headers=headers,
-    #     json=json_data
-    # )
-    #
-    # return response.content
+async def text_to_speech(text, voice="default"):
+
+    voice_map = {
+        "default": "en-US-AriaNeural",
+        "female": "en-US-AriaNeural",
+        "male": "en-US-GuyNeural"
+    }
+
+    selected_voice = voice_map.get(
+        voice,
+        "en-US-AriaNeural"
+    )
+
+    communicate = edge_tts.Communicate(
+        text=text,
+        voice=selected_voice
+    )
+
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".mp3"
+    ) as temp_audio:
+
+        output_path = temp_audio.name
+
+    await communicate.save(output_path)
+
+    with open(output_path, "rb") as f:
+        audio = f.read()
+
+    os.remove(output_path)
+
+    return audio
