@@ -45,10 +45,11 @@ def ollama_process_message(user_message):
     response = requests.post(
         "http://localhost:11434/api/generate",
         json={
-            "model": "llama3",
+            "model": "llama3.2",
             "prompt": prompt,
             "stream": False
-        }
+        },
+        timeout=120,
     )
 
     result = response.json()
@@ -57,29 +58,30 @@ def ollama_process_message(user_message):
 
 
 def text_to_speech(text, voice=""):
-    base_url = "https://sn-watson-tts.labs.skills.network"
-
-    api_url = (
-        base_url +
-        "/text-to-speech/api/v1/synthesize?output=output_text.wav"
-    )
-
-    if voice != "" and voice != "default":
-        api_url += "&voice=" + voice
-
-    headers = {
-        "Accept": "audio/wav",
-        "Content-Type": "application/json"
-    }
-
-    json_data = {
-        "text": text
-    }
-
-    response = requests.post(
-        api_url,
-        headers=headers,
-        json=json_data
-    )
-
-    return response.content
+    return b""
+    # base_url = "https://sn-watson-tts.labs.skills.network"
+    #
+    # api_url = (
+    #     base_url +
+    #     "/text-to-speech/api/v1/synthesize?output=output_text.wav"
+    # )
+    #
+    # if voice != "" and voice != "default":
+    #     api_url += "&voice=" + voice
+    #
+    # headers = {
+    #     "Accept": "audio/wav",
+    #     "Content-Type": "application/json"
+    # }
+    #
+    # json_data = {
+    #     "text": text
+    # }
+    #
+    # response = requests.post(
+    #     api_url,
+    #     headers=headers,
+    #     json=json_data
+    # )
+    #
+    # return response.content
